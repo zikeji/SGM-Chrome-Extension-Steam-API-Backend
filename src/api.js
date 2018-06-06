@@ -1,17 +1,16 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const crypto = require('crypto');
-const Steam = require('steamapi');
 
 class API {
-  constructor(config, database, logger) {
+  constructor(config, database, steam, logger) {
     this.db = database;
     this.logger = logger;
 
     this.salt = config.salt;
     this.dailyLimit = config.dailyLimit;
 
-    this.steam = new Steam(config.steamApiKey);
+    this.steam = steam;
 
     this.router = express.Router();
 
@@ -79,24 +78,7 @@ class API {
          * @type {PlayerSummary}
          */
         const users = await this.steam.getUserSummary(req.body.steamID64);
-        const results = [];
-        for (let i = 0; i < users.length; i += 1) {
-          const user = users[i];
-          results.push({
-            steamid: user.steamID, // redundant data to support older plugin version
-            steamID: user.steamID,
-            personaname: user.nickname, // redundant data to support older plugin version
-            nickname: user.nickname,
-            avatar: {
-              small: user.avatar.small,
-              medium: user.avatar.medium,
-            },
-            lastLogOff: user.lastLogOff,
-            visibilityState: user.visibilityState,
-            personaState: user.personaState,
-          });
-        }
-        res.json(results);
+        res.json(users);
       } catch (err) {
         this.logger.error('unable to get steam users', err);
         res.sendStatus(500);

@@ -1,6 +1,7 @@
 const config = require('../config.js');
 const logger = require('../logger.js')(config);
 const Database = require('./db');
+const Steam = require('./steam');
 const API = require('./api');
 
 const express = require('express');
@@ -8,7 +9,8 @@ const express = require('express');
 const app = express();
 
 const db = new Database(logger, 'stats.sqlite');
-const api = new API(config, db, logger);
+const steam = new Steam(config.steamApiKey);
+const api = new API(config, db, steam, logger);
 
 async function main() {
   logger.debug('initializing database');
