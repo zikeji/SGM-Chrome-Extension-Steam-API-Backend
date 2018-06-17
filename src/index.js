@@ -9,7 +9,7 @@ const express = require('express');
 const app = express();
 
 const db = new Database(logger, 'stats.sqlite');
-const steam = new Steam(config.steamApiKey);
+const steam = new Steam(config, logger);
 const api = new API(config, db, steam, logger);
 
 async function main() {

@@ -62,7 +62,8 @@ class API {
   async indexGet(req, res) {
     try {
       const stats = await this.db.stats();
-      res.json(stats);
+      const cacheStats = await this.steam.cache.getStats();
+      res.json({ stats, cacheStats });
     } catch (err) {
       this.logger.error('unable to return stats to user', err);
       res.sendStatus(500);
