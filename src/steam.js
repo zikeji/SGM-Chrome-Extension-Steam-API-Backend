@@ -4,32 +4,53 @@
  */
 
 const steamapi = require('steamapi');
+const NodeCache = require('node-cache');
 
 const idReg = /^\d{17}$/;
 
 class Steam {
-  constructor(key) {
-    this.steamapi = new steamapi(key);
+  constructor(config, logger) {
+    this.steamapi = new steamapi(config.steamApiKey);
+    this.cache = new NodeCache({ stdTTL: config.cacheTimeout, checkperiod: config.cacheTimeout * 0.2 });
+    this.logger = logger;
   }
 
   /**
    * Get users summary.
    * @param {string} id User ID
-   * @returns {Promise<PlayerSummary>} Summary
+   * @returns {array} Summary
    */
-  getUserSummary(id) {
-    const arr = Array.isArray(id);
-    if ((arr && id.some(i => !idReg.test(i))) || (!arr && !idReg.test(id))) return Promise.reject(new TypeError('Invalid/no id provided'));
+  async getUserSummary(id) {
+    if (!Array.isArray(id)) id = [id];
+    if (id.some(i => !idReg.test(i))) throw new TypeError('Invalid/no id provided');
 
-    return this.steamapi
-      .get(`/ISteamUser/GetPlayerSummaries/v2?steamids=${id}`)
-      .then((json) => {
-        if (json.response.players.length) {
-          return arr ? json.response.players.map(player => Steam.transformUser(player)) : Steam.transformUser(json.response.players[0]);
-        } else {
-          return Promise.reject(new Error('No players found'));
-        }
+    const resultArray = [];
+
+    const cached = this.cache.mget(id);
+    if (Object.values(cached).length > 0) {
+      Object.values(cached).forEach((player) => {
+        id.splice(id.indexOf(player.steamID), 1);
+        const expires = this.cache.getTtl(player.steamID);
+        player.cacheExpires = expires ? new Date(expires) : null;
+        resultArray.push(player);
       });
+    }
+
+    if (id.length > 0) {
+      const json = await this.steamapi.get(`/ISteamUser/GetPlayerSummaries/v2?steamids=${id}`);
+      if (json.response.players.length > 0) {
+        const responsePlayers = json.response.players.map(player => Steam.transformUser(player));
+
+        responsePlayers.forEach((player) => {
+          resultArray.push(player);
+          this.cache.set(player.steamID, player, (err) => {
+            if (err) this.logger.error('Unable to set new cache', err);
+          });
+        });
+      }
+    }
+
+    return resultArray;
   }
 
   /**
@@ -39,9 +60,9 @@ class Steam {
    */
   static transformUser(user) {
     return {
-      steamid: user.steamid, // redundant data to support older plugin version
+      // steamid: user.steamid, // redundant data to support older plugin version
       steamID: user.steamid,
-      personaname: user.personaname, // redundant data to support older plugin version
+      // personaname: user.personaname, // redundant data to support older plugin version
       nickname: user.personaname,
       avatar: {
         small: user.avatar,
@@ -61,4 +82,5 @@ class Steam {
   }
 }
 
-module.exports = Steam;
+module
+  .exports = Steam;
