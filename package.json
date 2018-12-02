@@ -7,7 +7,7 @@
   "description": "",
   "main": "src/index.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "node src/index.js",
     "lint": "./node_modules/.bin/eslint .",
     "test": "npm run lint"
   },
