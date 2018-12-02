@@ -1,8 +1,7 @@
 FROM node:8
 WORKDIR /usr/src/app
-COPY package*.json ./
-RUN npm install --only=production
 COPY . .
+RUN npm install --only=production
 ADD config.docker.js config.js
 EXPOSE 8080
-CMD [ "npm", "start" ]
+CMD [ "node", "src/index.js" ]
